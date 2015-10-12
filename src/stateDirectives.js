@@ -76,8 +76,8 @@ function stateContext(el) {
  * @param {string} ui-sref 'stateName' can be any valid absolute or relative state
  * @param {Object} ui-sref-opts options to pass to {@link ui.router.state.$state#go $state.go()}
  */
-$StateRefDirective.$inject = ['$state', '$timeout'];
-function $StateRefDirective($state, $timeout) {
+$StateRefDirective.$inject = ['$state', '$timeout', 'mplStateService'];
+function $StateRefDirective($state, $timeout, mplStateService) {
   var allowedOptions = ['location', 'inherit', 'reload', 'absolute'];
 
   return {
@@ -133,9 +133,18 @@ function $StateRefDirective($state, $timeout) {
         var button = e.which || e.button;
         if ( !(button > 1 || e.ctrlKey || e.metaKey || e.shiftKey || element.attr('target')) ) {
           // HACK: This is to allow ng-clicks to be processed before the transition is initiated:
-          var transition = $timeout(function() {
-            $state.go(ref.state, params, options);
-          });
+          var transition, fn;
+          var fullParams = angular.extend({}, $state.params, params);
+          if ($state.is(ref.state, fullParams)) {
+            fn = function() {
+              mplStateService.goToClosestAncestorNonModalState();
+            };
+          } else {
+            fn = function() {
+              $state.go(ref.state, params, options);
+            };
+          }
+          $timeout(fn);
           e.preventDefault();
 
           // if the state has no URL, ignore one preventDefault from the <a> directive.
